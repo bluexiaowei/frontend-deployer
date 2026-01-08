@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Frontend Deployer - 轻量前端部署助手</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #f0f2f5; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto 20px; }
+        h2 { color: #1677ff; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #d9d9d9; border-radius: 4px; box-sizing: border-box; }
+        button { background: #1677ff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        .btn-del { background: #ff4d4f; padding: 5px 10px; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🚀 新建部署</h2>
+        <form action="/deploy" method="post" enctype="multipart/form-data">
+            <input type="text" name="name" placeholder="项目名称 (如: mysite)" required>
+            <input type="number" name="port" placeholder="访问端口 (如: 8081)" required>
+            <input type="file" name="file" accept=".zip" required>
+            <button type="submit">开始部署</button>
+        </form>
+    </div>
+    <div class="card">
+        <h2>📋 已上线项目</h2>
+        <div id="list">加载中...</div>
+    </div>
+    <script>
+        function loadList() {
+            fetch('/api/list').then(res => res.json()).then(data => {
+                let html = `<table><tr><th>项目名</th><th>端口</th><th>操作</th></tr>`;
+                data.forEach(item => {
+                    html += `<tr><td>${item.name}</td><td><a href="http://\${location.hostname}:\${item.port}" target="_blank">\${item.port}</a></td>
+                    <td><button class="btn-del" onclick="del('\${item.name}')">删除</button></td></tr>`;
+                });
+                document.getElementById('list').innerHTML = html + '</table>';
+            });
+        }
+        function del(name) { if(confirm('确定删除?')) fetch('/delete/'+name, {method:'DELETE'}).then(loadList); }
+        loadList();
+    </script>
+</body>
+</html>

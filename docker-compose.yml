@@ -1,0 +1,10 @@
+services:
+  frontend-deployer:
+    build: .
+    container_name: frontend-deployer
+    restart: always
+    ports:
+      - "4000:4000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./deployed_projects:/app/deployed_projects
