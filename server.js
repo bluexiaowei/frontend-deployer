@@ -60,6 +60,7 @@ app.post('/deploy', upload.single('file'), (req, res) => {
         fs.unlinkSync(req.file.path);
 
         // B. 自动纠正 dist 嵌套：如果根目录没 index.html 且只有一个子目录，则提取内容
+        console.log(`[解压完成] ${targetDir}:`, fs.readdirSync(targetDir));
         let items = fs.readdirSync(targetDir).filter(item => !item.startsWith('.'));
         if (!items.includes('index.html') && items.length === 1) {
             const subDir = path.join(targetDir, items[0]);
