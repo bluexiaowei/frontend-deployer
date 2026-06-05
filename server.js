@@ -73,7 +73,9 @@ app.post('/deploy', upload.single('file'), (req, res) => {
         }
 
         // C. 生成 nginx 配置（如果配置了后端转发）
-        const nginxConfPath = path.join(targetDir, 'nginx.conf');
+        // 写入用容器内路径，docker -v 挂载用宿主机路径
+        const nginxConfContainerPath = path.join(targetDir, 'nginx.conf');
+        const nginxConfHostPath = path.join(hostPath, 'nginx.conf');
         if (backend && backend.trim()) {
             const nginxConf = `server {
     listen       80;
@@ -101,7 +103,7 @@ app.post('/deploy', upload.single('file'), (req, res) => {
     }
 }
 `;
-            fs.writeFileSync(nginxConfPath, nginxConf);
+            fs.writeFileSync(nginxConfContainerPath, nginxConf);
         }
 
         // D. 启动容器（带 Label 标记）
@@ -116,7 +118,7 @@ app.post('/deploy', upload.single('file'), (req, res) => {
 
         // 如果有 nginx 配置，挂载覆盖默认配置
         if (backend && backend.trim()) {
-            dockerCmd += ` \\\n            -v ${nginxConfPath}:/etc/nginx/conf.d/default.conf:ro`;
+            dockerCmd += ` \\\n            -v ${nginxConfHostPath}:/etc/nginx/conf.d/default.conf:ro`;
         }
 
         dockerCmd += ` \\\n            nginx:alpine`;
