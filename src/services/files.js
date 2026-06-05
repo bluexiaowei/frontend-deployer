@@ -70,8 +70,26 @@ function removeProjectDir(name) {
     }
 }
 
+/**
+ * 保存项目部署元数据
+ */
+function saveMeta(targetDir, meta) {
+    fs.writeFileSync(path.join(targetDir, 'deploy.json'), JSON.stringify(meta, null, 2));
+}
+
+/**
+ * 读取项目部署元数据
+ */
+function readMeta(name) {
+    const filePath = path.join(CONTAINER_DEPLOY_DIR, name, 'deploy.json');
+    if (!fs.existsSync(filePath)) return null;
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+}
+
 module.exports = {
     extractZip,
     writeNginxConfig,
     removeProjectDir,
+    saveMeta,
+    readMeta,
 };

@@ -319,6 +319,33 @@
 
 </div>
 
+<!-- 编辑弹窗 -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal" style="max-width:480px;text-align:left;">
+        <h3 style="margin-bottom:20px;">✏️ 编辑项目 <span id="editTitle"></span></h3>
+        <div class="form-group" style="margin-bottom:14px;">
+            <label>访问端口</label>
+            <input type="number" id="editPort" placeholder="如: 8081">
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+            <label>后端地址（留空则取消 API 转发）</label>
+            <input type="text" id="editBackend" placeholder="http://192.168.1.100:3000">
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+            <label>转发前缀</label>
+            <input type="text" id="editPrefix" placeholder="/api">
+        </div>
+        <div class="checkbox-row" style="margin-bottom:20px;">
+            <input type="checkbox" id="editStrip">
+            <label for="editStrip">转发时去除前缀</label>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeEditModal()">取消</button>
+            <button class="btn btn-primary" id="confirmEdit" onclick="submitEdit()">保存更改</button>
+        </div>
+    </div>
+</div>
+
 <!-- 删除确认弹窗 -->
 <div class="modal-overlay" id="modal">
     <div class="modal">
@@ -379,6 +406,74 @@
         if (e.target === this) closeModal();
     };
 
+    // ---- 编辑功能 ----
+    let editTarget = '';
+
+    async function editProject(name) {
+        editTarget = name;
+        document.getElementById('editTitle').textContent = name;
+        // 重置表单
+        document.getElementById('editPort').value = '';
+        document.getElementById('editBackend').value = '';
+        document.getElementById('editPrefix').value = '/api';
+        document.getElementById('editStrip').checked = false;
+
+        try {
+            const res = await fetch('/api/project/' + name);
+            if (res.ok) {
+                const meta = await res.json();
+                document.getElementById('editPort').value = meta.port || '';
+                document.getElementById('editBackend').value = meta.backend || '';
+                document.getElementById('editPrefix').value = meta.apiPrefix || '/api';
+                document.getElementById('editStrip').checked = meta.stripPrefix || false;
+            }
+        } catch(_) {}
+        document.getElementById('editModal').classList.add('open');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('open');
+        editTarget = '';
+    }
+
+    document.getElementById('editModal').onclick = function(e) {
+        if (e.target === this) closeEditModal();
+    };
+
+    async function submitEdit() {
+        if (!editTarget) return;
+        const port = document.getElementById('editPort').value;
+        const backend = document.getElementById('editBackend').value.trim();
+        const apiPrefix = document.getElementById('editPrefix').value || '/api';
+        const stripPrefix = document.getElementById('editStrip').checked;
+
+        if (!port) { toast('请填写端口号', true); return; }
+
+        const btn = document.getElementById('confirmEdit');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> 保存中...';
+
+        try {
+            const res = await fetch('/api/project/' + editTarget, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ port, backend, apiPrefix, stripPrefix })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast('✅ ' + data.message);
+                closeEditModal();
+                loadList();
+            } else {
+                toast('更新失败: ' + (data.error || res.statusText), true);
+            }
+        } catch(e) {
+            toast('网络错误: ' + e.message, true);
+        }
+        btn.disabled = false;
+        btn.innerHTML = '保存更改';
+    }
+
     async function loadList() {
         const container = document.getElementById('listContainer');
         container.innerHTML = '<div class="empty"><div class="spinner" style="border-color:rgba(79,110,247,0.2);border-top-color:var(--primary);"></div></div>';
@@ -406,6 +501,7 @@
                     </div>
                     <div class="project-actions">
                         <a class="btn btn-sm btn-ghost" href="http://${location.hostname}:${item.port}" target="_blank">访问</a>
+                        <button class="btn btn-sm btn-ghost" onclick="editProject('${item.name}')">编辑</button>
                         <button class="btn btn-sm btn-danger" onclick="confirmDel('${item.name}')">删除</button>
                     </div>
                 </div>`;

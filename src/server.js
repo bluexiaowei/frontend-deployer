@@ -3,6 +3,9 @@ const registerRoutes = require('./routes');
 
 const app = express();
 
+// 中间件
+app.use(express.json());
+
 // 路由
 registerRoutes(app);
 
