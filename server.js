@@ -126,6 +126,19 @@ app.post('/deploy', upload.single('file'), (req, res) => {
         
         execSync(dockerCmd);
 
+        // E. 部署后健康检查：确认容器正常运行
+        try {
+            const status = execSync(
+                `${DOCKER_API} docker inspect --format "{{.State.Status}}" ${name}`
+            ).toString().trim();
+            if (status !== 'running') {
+                const logs = execSync(`${DOCKER_API} docker logs --tail 20 ${name} 2>&1`).toString();
+                throw new Error(`容器状态: ${status}\nnginx 日志:\n${logs}`);
+            }
+        } catch (e) {
+            if (e.message.includes('容器状态')) throw e;
+        }
+
         const proxyNote = (backend && backend.trim())
             ? `<br>🔀 ${prefix} 请求转发到 ${backend}`
             : '';
