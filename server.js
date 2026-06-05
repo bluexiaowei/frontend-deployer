@@ -53,8 +53,15 @@ app.post('/deploy', upload.single('file'), (req, res) => {
     const hostPath = `${HOST_BASE_DIR}/${name}`;
 
     try {
-        // A. 解压并清理（rm -rf 处理 Docker 残留目录等 fs.rmSync 删不掉的边缘情况）
-        execSync(`rm -rf ${targetDir}`, { stdio: 'ignore' });
+        // A. 解压并清理
+        try {
+            fs.rmSync(targetDir, { recursive: true, force: true });
+        } catch (_) {
+            // fs.rmSync 删不掉的（如 Docker 残留）用 rm -rf 兜底，前提是路径安全
+            if (targetDir.startsWith(CONTAINER_DEPLOY_DIR + '/') && targetDir.length > CONTAINER_DEPLOY_DIR.length + 1) {
+                execSync(`rm -rf ${targetDir}`, { stdio: 'ignore' });
+            }
+        }
         const zip = new admZip(req.file.path);
         zip.extractAllTo(targetDir, true);
         fs.unlinkSync(req.file.path);
