@@ -2,7 +2,7 @@
   "name": "frontend-deployer",
   "version": "1.0.0",
   "description": "A lightweight frontend deployment manager for CentOS 7 and other Linux systems",
-  "main": "server.js",
+  "main": "src/server.js",
   "keywords": [
     "frontend",
     "deployment",
