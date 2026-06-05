@@ -53,8 +53,8 @@ app.post('/deploy', upload.single('file'), (req, res) => {
     const hostPath = `${HOST_BASE_DIR}/${name}`;
 
     try {
-        // A. 解压并清理
-        if (fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true });
+        // A. 解压并清理（rm -rf 处理 Docker 残留目录等 fs.rmSync 删不掉的边缘情况）
+        execSync(`rm -rf ${targetDir}`, { stdio: 'ignore' });
         const zip = new admZip(req.file.path);
         zip.extractAllTo(targetDir, true);
         fs.unlinkSync(req.file.path);
