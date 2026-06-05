@@ -1,39 +1,40 @@
-# 🚀 Frontend Deployer (轻量前端一键部署助手)
+# 🚀 Frontend Deployer
 
-**Frontend Deployer** 是一个轻量级前端部署管理工具。它通过 Node.js 控制宿主机 Docker，实现前端压缩包（`.zip`）的自动解压、目录平铺归一化、以及 Nginx 容器化发布。
-
-## 📸 页面效果
-
-![Frontend Deployer 管理界面](./docs/website.png)
+轻量级前端部署管理工具 — 通过 Node.js 控制宿主机 Docker，实现前端 `.zip` 包自动解压、Nginx 容器化发布、API 反向代理。
 
 ---
 
 ## ✨ 核心特性
 
-- **智能目录兼容**：自动识别并修复 `.zip` 包中嵌套 `dist` 文件夹的问题，确保 `index.html` 始终处于 Nginx 根目录。
-- **环境隔离**：管理后台运行在 Docker 容器中，完美绕过 CentOS 7 系统 GLIBC 版本过低无法安装高版本 Node.js 的难题。
-- **精准管理**：通过 Docker Label (`managed-by=frontend-deployer`) 技术，管理界面仅显示由本系统部署的项目，不干扰宿主机其他服务。
-- **API 转发**：支持为部署的项目配置反向代理，将指定前缀（如 `/api`）的请求转发到后端服务，解决前后端分离项目的跨域和部署问题。
-- **极简操作**：上传、填写端口、点击部署，三步完成上线。
+- **一键部署**：上传 ZIP、填端口、点部署，三步上线
+- **智能解压**：自动识别并修复嵌套 `dist` 目录，确保 `index.html` 始终在 Nginx 根目录
+- **API 反向代理**：支持将 `/api` 等前缀请求转发到后端，可去除前缀，自动处理 Origin 头
+- **在线编辑**：已部署项目可在线修改端口、后端地址等参数，无需重新上传
+- **精准管理**：通过 Docker Label 技术，管理界面仅显示本系统部署的项目
+- **环境隔离**：管理后台运行在容器中，绕过 CentOS 7 GLIBC 版本限制
+- **路径自适应**：自动检测宿主机目录，无需手动配置路径
 
 ---
 
 ## 📁 项目结构
 
 ```
-.
-├── docker-compose.yml      # Docker Compose 配置文件
-├── Dockerfile              # 管理后台容器构建文件
-├── index.html              # 前端管理界面
-├── server.js               # 后端核心逻辑（Express 服务器）
-├── package.json            # Node.js 依赖配置
-├── README.md               # 项目说明文档
-├── LICENSE                 # MIT 许可证
-├── CONTRIBUTING.md         # 贡献指南
-├── .gitignore              # Git 忽略文件配置
-├── docs/                   # 文档和截图目录
-│   └── website.png         # 项目截图（示例）
-└── deployed_projects/      # 存放解压后的静态文件（自动生成）
+src/
+  config.js              # 配置 + HOST_BASE_DIR 自动检测
+  server.js              # Express 入口
+  routes/
+    index.js             # 路由注册
+    pages.js             # 静态页面
+    projects.js          # 部署 / 列表 / 编辑 / 删除 API
+  services/
+    docker.js            # Docker 操作封装
+    nginx.js             # Nginx 配置生成
+    files.js             # 文件处理（解压 / 扁平化 / 清理）
+  public/
+    index.html           # 管理界面
+docker-compose.yml       # Docker Compose 配置
+Dockerfile               # 镜像构建
+package.json             # 依赖配置
 ```
 
 ---
@@ -41,10 +42,11 @@
 ## 🛠️ 技术栈
 
 - **后端**：Node.js + Express
-- **文件处理**：multer（文件上传）、adm-zip（ZIP 解压）
+- **前端**：原生 HTML/CSS/JS（单文件，零构建）
+- **文件处理**：multer（上传）、adm-zip（解压）
 - **容器化**：Docker + Docker Compose
-- **Web 服务器**：Nginx（Alpine 镜像）
-- **架构模式**：DooD (Docker-out-of-Docker)
+- **Web 服务器**：Nginx Alpine
+- **架构**：DooD (Docker-out-of-Docker)
 
 ---
 
@@ -52,64 +54,31 @@
 
 ### 1. 环境要求
 
-- **操作系统**：CentOS 7.x（或其他支持 Docker 的 Linux 发行版）
-- **依赖软件**：
-  - [Docker](https://docs.docker.com/engine/install/centos/)（版本 20.10+）
-  - [Docker Compose](https://docs.docker.com/compose/install/)（版本 1.29+）
+- Docker 20.10+
+- Docker Compose 1.29+
+- 任意 Linux 发行版
 
-### 2. 准备目录结构
-
-将项目文件放置在宿主机的同一目录下（推荐 `/opt/frontend-deployer` 或 `/root/frontend-deployer`）：
+### 2. 部署
 
 ```bash
-# 克隆或下载项目
-git clone https://github.com/yourusername/frontend-deployer.git
-cd frontend-deployer
-
-# 或者手动创建目录并复制文件
-mkdir -p /opt/frontend-deployer
-cd /opt/frontend-deployer
-```
-
-### 3. 修改配置
-
-编辑 `server.js` 文件，根据实际情况修改 `HOST_BASE_DIR` 配置：
-
-```javascript
-// 修改为你的实际部署目录路径
-const HOST_BASE_DIR = "/opt/frontend-deployer/deployed_projects";
-```
-
-### 4. 启动服务
-
-```bash
-# 构建并后台运行
+git clone <repo-url> && cd frontend-deployer
 docker compose up -d --build
-
-# 赋予部署目录读写权限（确保容器可以写入文件）
-chmod -R 777 ./deployed_projects
-
-# 检查容器状态
-docker ps | grep frontend-deployer
 ```
 
-### 5. 访问管理界面
+> **路径说明**：系统启动时自动通过 `docker inspect` 检测 `deployed_projects` 在宿主机上的真实路径，无需手动配置 `HOST_BASE_DIR`。如需覆盖，可设置环境变量 `HOST_BASE_DIR=/your/path`。
 
-打开浏览器访问：`http://服务器IP:4000`
+### 3. 访问
 
-### 6. 更新服务
+打开 `http://服务器IP:4000`
 
-修改代码（如 `server.js`、`index.html`）后，需要重建镜像并重启管理后台容器：
+### 4. 更新
 
 ```bash
-# 拉取最新代码（如果使用 git 管理）
 git pull
-
-# 重新构建镜像并重启
 docker compose up -d --build
 ```
 
-> **注意**：`server.js` 在构建时 `COPY` 进镜像，修改后必须 `--build` 重建才能生效。管理后台重启期间，已上线的项目容器不受影响，照常运行。
+管理后台重启期间，已上线的项目容器不受影响。
 
 ---
 
@@ -117,192 +86,129 @@ docker compose up -d --build
 
 ### 部署新项目
 
-1. **访问管理界面**：打开 `http://服务器IP:4000`
-2. **填写项目信息**：
-   - **项目名称**：仅限英文、数字、中划线（将作为 Docker 容器名）
-   - **访问端口**：请确保该端口未被占用，且防火墙/安全组已放行
-3. **（可选）配置 API 转发**：展开「⚙️ API 转发」，填写：
-   - **后端地址**：后端服务的完整 URL，如 `http://192.168.1.100:3000`
-   - **转发前缀**：需要转发的路径前缀，默认 `/api`（如 `/api/v1`、`/backend` 等）
-4. **上传文件**：选择标准 `.zip` 格式的压缩包（支持直接打包 `dist` 目录）
-5. **点击部署**：系统会自动解压、处理目录结构并启动 Nginx 容器
+1. 填写**项目名称**和**访问端口**
+2. 上传标准 `.zip` 压缩包
+3. （可选）展开「API 转发」配置后端代理
+4. 点击「开始部署」
 
-### 访问已部署项目
+### API 转发
 
-部署成功后，可通过 `http://服务器IP:端口号` 访问你的前端项目。
+展开「API 转发」面板后：
+
+| 参数 | 说明 | 示例 |
+|---|---|---|
+| 后端地址 | 后端服务完整 URL（含端口） | `http://192.168.1.100:3000` |
+| 转发前缀 | 需要代理的路径前缀 | `/api`（默认） |
+| 去除前缀 | `/api/users` → `/users` | 勾选即可 |
+
+> 转发时自动将 `Host` 改为后端地址、清空 `Origin` 头，行为与 webpack `devServer.proxy` 的 `changeOrigin: true` 一致。
+
+### 编辑已部署项目
+
+点击项目卡片上的「编辑」，可修改：
+- 访问端口
+- 后端地址（留空则取消 API 转发）
+- 转发前缀
+- 是否去除前缀
+
+保存后自动重建 Nginx 容器，无需重新上传文件。
 
 ### 删除项目
 
-在管理界面的"已上线项目"列表中，点击对应项目的"删除"按钮即可。
+点击「删除」→ 确认弹窗 → 自动清理容器和文件。
 
 ---
 
-## ⚙️ 核心逻辑说明 (DooD 架构)
+## ⚙️ 架构说明
 
-本系统采用 **DooD (Docker-out-of-Docker)** 方案：
+### DooD 模式
 
-- **路径映射**：管理后台容器通过挂载 `/var/run/docker.sock` 来指挥宿主机 Docker 引擎
-- **双重挂载**：项目文件存放在宿主机，管理容器挂载它用于解压，项目 Nginx 容器挂载它用于展示
-- **目录自动修复**：如果检测到 ZIP 包中只有一个子目录且根目录没有 `index.html`，系统会自动将子目录内容平铺到根目录
+管理容器通过挂载 `/var/run/docker.sock` 控制宿主机 Docker，项目文件通过 bind mount 共享：
 
-### 工作流程
+```
+宿主机 deployed_projects/  ←→  管理容器 /app/deployed_projects/  (读写)
+宿主机 deployed_projects/  ←→  Nginx 容器 /usr/share/nginx/html/  (只读)
+```
 
-1. 用户上传 ZIP 文件 → 管理容器接收
-2. 解压到 `deployed_projects/项目名/` 目录
-3. 自动检测并修复嵌套目录结构
-4. 如果配置了后端转发，生成自定义 `nginx.conf`（含 `proxy_pass` 规则）
-5. 通过 Docker API 创建 Nginx 容器，挂载项目目录和 nginx 配置
-6. 容器启动，项目上线
+### 部署流程
 
-### API 转发原理
+1. 接收 ZIP → 解压到 `deployed_projects/项目名/`
+2. 检测嵌套目录并自动平铺
+3. 如配置了后端转发 → 生成 `nginx/default.conf`
+4. `docker run` 启动 Nginx 容器，挂载静态文件 + nginx 配置
+5. 健康检查确认容器运行 → 保存 `deploy.json` 元数据
+6. 返回成功
 
-配置了后端转发后，系统会为该项目生成如下 nginx 配置并挂载到容器内：
+### API 转发配置示例
+
+生成的 `nginx/default.conf`：
 
 ```nginx
-# 匹配转发前缀的请求 → 代理到后端
-location /api {
-    proxy_pass http://192.168.1.100:3000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-}
+server {
+    listen       80;
+    listen  [::]:80;
+    server_name  localhost;
 
-# 其余请求 → 静态文件
-location / {
-    try_files $uri $uri/ /index.html;
+    root   /usr/share/nginx/html;
+    index  index.html index.htm;
+
+    location /api {
+        proxy_pass http://192.168.1.100:3000;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header Origin "";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # 勾选「去除前缀」时启用：
+        # rewrite ^/api/(.*) /$1 break;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
 }
 ```
 
-> **提示**：如果后端不需要 `/api` 前缀（如期望 `/users` 而非 `/api/users`），可以在生成的 `nginx.conf` 中取消注释 `rewrite` 行并重启容器。
-
 ---
 
-## 📝 维护与清理
-
-### 查看日志
+## 📝 运维命令
 
 ```bash
 # 查看管理后台日志
 docker logs -f frontend-deployer
 
-# 查看特定项目的 Nginx 容器日志
+# 查看某项目 Nginx 日志（含 upstream 信息）
 docker logs -f <项目名称>
-```
 
-### 停止服务
-
-```bash
-# 停止所有服务（包括管理后台和所有部署的项目）
-docker compose down
-
-# 仅停止管理后台（已部署的项目不受影响）
+# 停止管理后台（已部署项目不受影响）
 docker compose stop
+
+# 清理所有
+docker compose down
 ```
-
-### 重启服务
-
-```bash
-# 重启管理后台
-docker compose restart
-
-# 重启特定项目容器
-docker restart <项目名称>
-```
-
-### 清理项目
-
-- **通过界面删除**：在管理界面点击"删除"按钮，系统会自动停止容器并删除对应文件夹
-- **手动清理**：
-  ```bash
-  # 停止并删除容器
-  docker rm -f <项目名称>
-  
-  # 删除项目文件
-  rm -rf ./deployed_projects/<项目名称>
-  ```
 
 ---
 
 ## 🔧 故障排查
 
-### 问题：无法访问管理界面
-
-- 检查容器是否运行：`docker ps | grep frontend-deployer`
-- 检查端口是否被占用：`netstat -tlnp | grep 4000`
-- 检查防火墙规则：`firewall-cmd --list-ports`（CentOS 7）
-- 查看容器日志：`docker logs frontend-deployer`
-
-### 问题：部署失败
-
-- 检查 Docker 权限：确保容器可以访问 `/var/run/docker.sock`
-- 检查目录权限：确保 `deployed_projects` 目录有写权限
-- 检查端口冲突：确保指定的端口未被占用
-- 检查 ZIP 文件格式：确保上传的是有效的 ZIP 文件
-
-### 问题：项目无法访问
-
-- 检查项目容器是否运行：`docker ps | grep <项目名称>`
-- 检查端口映射：`docker port <项目名称>`
-- 检查防火墙/安全组：确保端口已放行
-- 检查项目文件：确认 `deployed_projects/<项目名>/index.html` 存在
-
-### 问题：Docker API 版本不兼容
-
-如果遇到 Docker API 版本问题，可以在 `server.js` 中调整 `DOCKER_API` 变量：
-
-```javascript
-// 根据你的 Docker 版本调整
-const DOCKER_API = "DOCKER_API_VERSION=1.43"; // 或 1.40, 1.41 等
-```
+| 问题 | 排查步骤 |
+|---|---|
+| 无法访问管理界面 | `docker ps \| grep frontend-deployer`、检查 4000 端口防火墙 |
+| 部署后访问不到项目 | `docker logs <项目名>` 查看 nginx 日志，检查 `→ upstream_addr` 确认转发状态 |
+| API 转发 403 | 先 curl 后端直连确认；检查后端地址是否含端口号；nginx 日志 `→` 后显示 `-` 则未转发、显示 IP 则已转发 |
+| 容器启动失败 | 管理界面会直接显示 nginx 错误日志 |
+| 端口冲突 | 换一个端口，或编辑已部署项目修改端口 |
 
 ---
 
-## ⚠️ 安全注意事项
+## ⚠️ 安全注意
 
-1. **Docker Socket 权限**：挂载 `/var/run/docker.sock` 意味着容器拥有完整的 Docker 控制权限，请确保：
-   - 仅在受信任的环境中使用
-   - 不要将管理界面暴露到公网（建议使用内网访问或配置反向代理 + 认证）
-
-2. **目录权限**：`chmod -R 777` 会赋予所有用户完全权限，生产环境建议：
-   - 使用更严格的权限设置
-   - 确保只有必要的用户/进程可以访问
-
-3. **端口管理**：确保防火墙规则正确配置，避免暴露不必要的端口
-
-4. **项目名称验证**：当前版本对项目名称的验证较简单，建议：
-   - 仅使用字母、数字、中划线
-   - 避免使用特殊字符，防止命令注入
+1. **Docker Socket**：挂载 `/var/run/docker.sock` 赋予容器完整 Docker 权限，勿暴露到公网
+2. **端口管理**：仅放行必要的端口
+3. **项目命名**：仅使用字母、数字、中划线
 
 ---
 
-## 📄 许可证
+## 📄 License
 
-本项目采用 [MIT License](LICENSE) 开源协议，可自由使用和修改。
-
----
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request 来帮助改进项目！
-
-### 贡献指南
-
-1. Fork 本项目
-2. 创建你的特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交你的更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启一个 Pull Request
-
----
-
-## 📞 支持
-
-如有问题或建议，请通过以下方式联系：
-- 提交 [GitHub Issue](https://github.com/yourusername/frontend-deployer/issues)
-- 发送邮件反馈
-
----
-
-## ⭐ Star History
-
-如果这个项目对你有帮助，欢迎给个 Star ⭐️
+MIT
