@@ -5,6 +5,9 @@ services:
     restart: always
     ports:
       - "4000:4000"
+    environment:
+      # 必须与下方 volumes 中 ./deployed_projects 的宿主机绝对路径一致
+      - HOST_BASE_DIR=/root/mini-deploy/deployed_projects
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./deployed_projects:/app/deployed_projects

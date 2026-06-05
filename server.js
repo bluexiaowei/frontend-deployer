@@ -11,9 +11,9 @@ const upload = multer({ dest: 'uploads/' });
 // --- 核心配置区 ---
 // DOCKER_API: 兼容 CentOS 7 的旧版 Docker API
 const DOCKER_API = "DOCKER_API_VERSION=1.43"; 
-// HOST_BASE_DIR: 宿主机存放项目的真实绝对路径 (必须与宿主机一致)
-// 建议路径: /opt/frontend-deployer/deployed_projects 或 /root/frontend-deployer/deployed_projects
-const HOST_BASE_DIR = "/opt/frontend-deployer/deployed_projects"; 
+// HOST_BASE_DIR: 宿主机存放项目的真实绝对路径 (必须与 docker-compose.yml 中 deployed_projects 的宿主机路径一致)
+// 可通过环境变量 HOST_BASE_DIR 覆盖，默认 /opt/frontend-deployer/deployed_projects
+const HOST_BASE_DIR = process.env.HOST_BASE_DIR || "/opt/frontend-deployer/deployed_projects"; 
 // CONTAINER_DEPLOY_DIR: 容器内挂载的路径
 const CONTAINER_DEPLOY_DIR = "/app/deployed_projects"; 
 // TAG: 用于识别由本系统创建的容器
