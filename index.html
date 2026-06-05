@@ -25,6 +25,10 @@
                 <summary style="cursor: pointer; color: #1677ff; padding: 6px 0;">⚙️ API 转发（可选）</summary>
                 <input type="text" name="backend" placeholder="后端地址 (如: http://192.168.1.100:3000)">
                 <input type="text" name="apiPrefix" placeholder="转发前缀 (默认: /api)" value="/api">
+                <label style="display: flex; align-items: center; margin: 10px 0; cursor: pointer; font-size: 14px; color: #666;">
+                    <input type="checkbox" name="stripPrefix" value="1" style="width: auto; margin: 0 8px 0 0;">
+                    转发时去除前缀（/api/users → /users）
+                </label>
             </details>
             <button type="submit">开始部署</button>
         </form>

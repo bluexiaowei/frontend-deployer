@@ -58,7 +58,7 @@ app.get('/api/list', (req, res) => {
 
 // 3. 部署逻辑（包含嵌套目录自动识别）
 app.post('/deploy', upload.single('file'), (req, res) => {
-    const { name, port, backend, apiPrefix } = req.body;
+    const { name, port, backend, apiPrefix, stripPrefix } = req.body;
     const prefix = apiPrefix || '/api';
     const targetDir = path.join(CONTAINER_DEPLOY_DIR, name);
     const hostPath = `${HOST_BASE_DIR}/${name}`;
@@ -124,8 +124,12 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
 
-        # 如果后端也需要前缀，保留原始路径；如果不需要，去掉前缀用下面这行:
-        # rewrite ^${prefix}/(.*) /\$1 break;
+        # 转发前缀处理
+        ${
+            stripPrefix
+            ? `rewrite ^${prefix}/(.*) /$1 break;`
+            : `# 保留前缀转发，如需去除请勾选「转发时去除前缀」`
+        }
     }
 
     # 其余请求走静态文件
