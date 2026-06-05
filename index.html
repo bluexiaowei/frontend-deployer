@@ -36,10 +36,14 @@
     <script>
         function loadList() {
             fetch('/api/list').then(res => res.json()).then(data => {
+                if (!data.length) {
+                    document.getElementById('list').innerHTML = '<p style="color:#999;">暂无已部署项目</p>';
+                    return;
+                }
                 let html = `<table><tr><th>项目名</th><th>端口</th><th>操作</th></tr>`;
                 data.forEach(item => {
-                    html += `<tr><td>${item.name}</td><td><a href="http://\${location.hostname}:\${item.port}" target="_blank">\${item.port}</a></td>
-                    <td><button class="btn-del" onclick="del('\${item.name}')">删除</button></td></tr>`;
+                    html += `<tr><td>${item.name}</td><td><a href="http://${location.hostname}:${item.port}" target="_blank">${item.port}</a></td>
+                    <td><button class="btn-del" onclick="del('${item.name}')">删除</button></td></tr>`;
                 });
                 document.getElementById('list').innerHTML = html + '</table>';
             });
