@@ -97,10 +97,19 @@ app.post('/deploy', upload.single('file'), (req, res) => {
         const nginxConfHostDir = path.join(hostPath, 'nginx');
         if (backend && backend.trim()) {
             fs.mkdirSync(nginxConfDir, { recursive: true });
-            const nginxConf = `server {
+            const nginxConf = `
+# 自定义日志格式：标注请求是本地文件(→)还是代理转发(⇒)
+log_format proxy '\$remote_addr [\$time_local] "\$request" '
+                  '\$status \$body_bytes_sent '
+                  '→ \$upstream_addr \$upstream_status '
+                  '"\$http_referer" "\$http_user_agent"';
+
+server {
     listen       80;
     listen  [::]:80;
     server_name  localhost;
+
+    access_log /var/log/nginx/access.log proxy;
 
     # 静态文件根目录
     root   /usr/share/nginx/html;
@@ -109,18 +118,18 @@ app.post('/deploy', upload.single('file'), (req, res) => {
     # API 转发到后端
     location ${prefix} {
         proxy_pass ${backend};
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
 
         # 如果后端也需要前缀，保留原始路径；如果不需要，去掉前缀用下面这行:
-        # rewrite ^${prefix}/(.*) /$1 break;
+        # rewrite ^${prefix}/(.*) /\$1 break;
     }
 
     # 其余请求走静态文件
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files \$uri \$uri/ /index.html;
     }
 }
 `;
