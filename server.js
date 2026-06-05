@@ -77,6 +77,10 @@ app.post('/deploy', upload.single('file'), (req, res) => {
         const nginxConfContainerPath = path.join(targetDir, 'nginx.conf');
         const nginxConfHostPath = path.join(hostPath, 'nginx.conf');
         if (backend && backend.trim()) {
+            // 防止上次失败残留的目录导致挂载失败（Docker 找不到文件时会自动创建目录）
+            if (fs.existsSync(nginxConfContainerPath)) {
+                fs.rmSync(nginxConfContainerPath, { recursive: true });
+            }
             const nginxConf = `server {
     listen       80;
     server_name  localhost;
