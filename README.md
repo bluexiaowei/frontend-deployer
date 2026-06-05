@@ -97,6 +97,20 @@ docker ps | grep frontend-deployer
 
 打开浏览器访问：`http://服务器IP:4000`
 
+### 6. 更新服务
+
+修改代码（如 `server.js`、`index.html`）后，需要重建镜像并重启管理后台容器：
+
+```bash
+# 拉取最新代码（如果使用 git 管理）
+git pull
+
+# 重新构建镜像并重启
+docker compose up -d --build
+```
+
+> **注意**：`server.js` 在构建时 `COPY` 进镜像，修改后必须 `--build` 重建才能生效。管理后台重启期间，已上线的项目容器不受影响，照常运行。
+
 ---
 
 ## 📖 使用指南
