@@ -73,14 +73,11 @@ app.post('/deploy', upload.single('file'), (req, res) => {
         }
 
         // C. 生成 nginx 配置（如果配置了后端转发）
-        // 写入用容器内路径，docker -v 挂载用宿主机路径
-        const nginxConfContainerPath = path.join(targetDir, 'nginx.conf');
-        const nginxConfHostPath = path.join(hostPath, 'nginx.conf');
+        // 写入 targetDir/nginx/default.conf，挂载整个 nginx/ 目录避免单文件挂载的坑
+        const nginxConfDir = path.join(targetDir, 'nginx');
+        const nginxConfHostDir = path.join(hostPath, 'nginx');
         if (backend && backend.trim()) {
-            // 防止上次失败残留的目录导致挂载失败（Docker 找不到文件时会自动创建目录）
-            if (fs.existsSync(nginxConfContainerPath)) {
-                fs.rmSync(nginxConfContainerPath, { recursive: true });
-            }
+            fs.mkdirSync(nginxConfDir, { recursive: true });
             const nginxConf = `server {
     listen       80;
     server_name  localhost;
@@ -107,7 +104,7 @@ app.post('/deploy', upload.single('file'), (req, res) => {
     }
 }
 `;
-            fs.writeFileSync(nginxConfContainerPath, nginxConf);
+            fs.writeFileSync(path.join(nginxConfDir, 'default.conf'), nginxConf);
         }
 
         // D. 启动容器（带 Label 标记）
@@ -120,9 +117,9 @@ app.post('/deploy', upload.single('file'), (req, res) => {
             -v ${hostPath}:/usr/share/nginx/html:ro \
             --restart always`;
 
-        // 如果有 nginx 配置，挂载覆盖默认配置
+        // 挂载 nginx 配置目录（目录挂载，避免单文件挂载的 docker bug）
         if (backend && backend.trim()) {
-            dockerCmd += ` \\\n            -v ${nginxConfHostPath}:/etc/nginx/conf.d/default.conf:ro`;
+            dockerCmd += ` \\\n            -v ${nginxConfHostDir}:/etc/nginx/conf.d:ro`;
         }
 
         dockerCmd += ` \\\n            nginx:alpine`;
