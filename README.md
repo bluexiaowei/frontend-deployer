@@ -13,6 +13,7 @@
 - **智能目录兼容**：自动识别并修复 `.zip` 包中嵌套 `dist` 文件夹的问题，确保 `index.html` 始终处于 Nginx 根目录。
 - **环境隔离**：管理后台运行在 Docker 容器中，完美绕过 CentOS 7 系统 GLIBC 版本过低无法安装高版本 Node.js 的难题。
 - **精准管理**：通过 Docker Label (`managed-by=frontend-deployer`) 技术，管理界面仅显示由本系统部署的项目，不干扰宿主机其他服务。
+- **API 转发**：支持为部署的项目配置反向代理，将指定前缀（如 `/api`）的请求转发到后端服务，解决前后端分离项目的跨域和部署问题。
 - **极简操作**：上传、填写端口、点击部署，三步完成上线。
 
 ---
@@ -106,8 +107,11 @@ docker ps | grep frontend-deployer
 2. **填写项目信息**：
    - **项目名称**：仅限英文、数字、中划线（将作为 Docker 容器名）
    - **访问端口**：请确保该端口未被占用，且防火墙/安全组已放行
-3. **上传文件**：选择标准 `.zip` 格式的压缩包（支持直接打包 `dist` 目录）
-4. **点击部署**：系统会自动解压、处理目录结构并启动 Nginx 容器
+3. **（可选）配置 API 转发**：展开「⚙️ API 转发」，填写：
+   - **后端地址**：后端服务的完整 URL，如 `http://192.168.1.100:3000`
+   - **转发前缀**：需要转发的路径前缀，默认 `/api`（如 `/api/v1`、`/backend` 等）
+4. **上传文件**：选择标准 `.zip` 格式的压缩包（支持直接打包 `dist` 目录）
+5. **点击部署**：系统会自动解压、处理目录结构并启动 Nginx 容器
 
 ### 访问已部署项目
 
@@ -132,8 +136,30 @@ docker ps | grep frontend-deployer
 1. 用户上传 ZIP 文件 → 管理容器接收
 2. 解压到 `deployed_projects/项目名/` 目录
 3. 自动检测并修复嵌套目录结构
-4. 通过 Docker API 创建 Nginx 容器，挂载项目目录
-5. 容器启动，项目上线
+4. 如果配置了后端转发，生成自定义 `nginx.conf`（含 `proxy_pass` 规则）
+5. 通过 Docker API 创建 Nginx 容器，挂载项目目录和 nginx 配置
+6. 容器启动，项目上线
+
+### API 转发原理
+
+配置了后端转发后，系统会为该项目生成如下 nginx 配置并挂载到容器内：
+
+```nginx
+# 匹配转发前缀的请求 → 代理到后端
+location /api {
+    proxy_pass http://192.168.1.100:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+
+# 其余请求 → 静态文件
+location / {
+    try_files $uri $uri/ /index.html;
+}
+```
+
+> **提示**：如果后端不需要 `/api` 前缀（如期望 `/users` 而非 `/api/users`），可以在生成的 `nginx.conf` 中取消注释 `rewrite` 行并重启容器。
 
 ---
 

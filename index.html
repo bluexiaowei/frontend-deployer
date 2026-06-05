@@ -21,6 +21,11 @@
             <input type="text" name="name" placeholder="项目名称 (如: mysite)" required>
             <input type="number" name="port" placeholder="访问端口 (如: 8081)" required>
             <input type="file" name="file" accept=".zip" required>
+            <details style="margin: 10px 0;">
+                <summary style="cursor: pointer; color: #1677ff; padding: 6px 0;">⚙️ API 转发（可选）</summary>
+                <input type="text" name="backend" placeholder="后端地址 (如: http://192.168.1.100:3000)">
+                <input type="text" name="apiPrefix" placeholder="转发前缀 (默认: /api)" value="/api">
+            </details>
             <button type="submit">开始部署</button>
         </form>
     </div>

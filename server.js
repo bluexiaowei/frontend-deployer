@@ -47,7 +47,8 @@ app.get('/api/list', (req, res) => {
 
 // 3. 部署逻辑（包含嵌套目录自动识别）
 app.post('/deploy', upload.single('file'), (req, res) => {
-    const { name, port } = req.body;
+    const { name, port, backend, apiPrefix } = req.body;
+    const prefix = apiPrefix || '/api';
     const targetDir = path.join(CONTAINER_DEPLOY_DIR, name);
     const hostPath = `${HOST_BASE_DIR}/${name}`;
 
@@ -71,19 +72,61 @@ app.post('/deploy', upload.single('file'), (req, res) => {
             }
         }
 
-        // C. 启动容器（带 Label 标记）
+        // C. 生成 nginx 配置（如果配置了后端转发）
+        const nginxConfPath = path.join(targetDir, 'nginx.conf');
+        if (backend && backend.trim()) {
+            const nginxConf = `server {
+    listen       80;
+    server_name  localhost;
+
+    # 静态文件根目录
+    root   /usr/share/nginx/html;
+    index  index.html index.htm;
+
+    # API 转发到后端
+    location ${prefix} {
+        proxy_pass ${backend};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 如果后端也需要前缀，保留原始路径；如果不需要，去掉前缀用下面这行:
+        # rewrite ^${prefix}/(.*) /$1 break;
+    }
+
+    # 其余请求走静态文件
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+`;
+            fs.writeFileSync(nginxConfPath, nginxConf);
+        }
+
+        // D. 启动容器（带 Label 标记）
         try { execSync(`${DOCKER_API} docker rm -f ${name}`, { stdio: 'ignore' }); } catch (e) {}
 
-        const dockerCmd = `${DOCKER_API} docker run -d \
+        let dockerCmd = `${DOCKER_API} docker run -d \
             --name ${name} \
             --label ${APP_LABEL} \
             -p ${port}:80 \
             -v ${hostPath}:/usr/share/nginx/html:ro \
-            --restart always \
-            nginx:alpine`;
+            --restart always`;
+
+        // 如果有 nginx 配置，挂载覆盖默认配置
+        if (backend && backend.trim()) {
+            dockerCmd += ` \\\n            -v ${nginxConfPath}:/etc/nginx/conf.d/default.conf:ro`;
+        }
+
+        dockerCmd += ` \\\n            nginx:alpine`;
         
         execSync(dockerCmd);
-        res.send(`<h2>✅ 部署成功！</h2><p>项目 ${name} 已在端口 ${port} 上线。</p><a href="/">返回首页</a>`);
+
+        const proxyNote = (backend && backend.trim())
+            ? `<br>🔀 ${prefix} 请求转发到 ${backend}`
+            : '';
+        res.send(`<h2>✅ 部署成功！</h2><p>项目 ${name} 已在端口 ${port} 上线。${proxyNote}</p><a href="/">返回首页</a>`);
     } catch (err) {
         console.error(err);
         res.status(500).send(`部署失败: ${err.message}`);
