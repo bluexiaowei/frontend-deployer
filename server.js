@@ -88,6 +88,7 @@ app.post('/deploy', upload.single('file'), (req, res) => {
             fs.mkdirSync(nginxConfDir, { recursive: true });
             const nginxConf = `server {
     listen       80;
+    listen  [::]:80;
     server_name  localhost;
 
     # 静态文件根目录
