@@ -1,6 +1,9 @@
-let proxyOpen = false;
-let deleteTarget = '';
+let modalMode = 'create'; // 'create' | 'edit'
 let editTarget = '';
+let deleteTarget = '';
+let proxyOpen = false;
+
+const $ = (id) => document.getElementById(id);
 
 function escapeHtml(str) {
     return String(str)
@@ -10,14 +13,8 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;');
 }
 
-function toggleProxy() {
-    proxyOpen = !proxyOpen;
-    document.getElementById('proxyPanel').classList.toggle('open', proxyOpen);
-    document.getElementById('proxyCaret').textContent = proxyOpen ? '▼' : '▶';
-}
-
 function toast(msg, isError) {
-    const el = document.getElementById('toast');
+    const el = $('toast');
     el.textContent = msg;
     el.className = 'toast' + (isError ? ' error' : '') + ' show';
     clearTimeout(el._t);
@@ -26,21 +23,123 @@ function toast(msg, isError) {
 
 async function parseJsonResponse(res) {
     const data = await res.json();
-    if (!res.ok) {
-        throw new Error(data.error || res.statusText);
-    }
+    if (!res.ok) throw new Error(data.error || res.statusText);
     return data;
 }
 
-function closeModal() {
-    document.getElementById('modal').classList.remove('open');
-    deleteTarget = '';
+function setProxyOpen(open) {
+    proxyOpen = open;
+    $('proxyPanel').classList.toggle('open', open);
+    $('proxyToggle').classList.toggle('open', open);
 }
 
-function confirmDel(name) {
+function updateFileDrop() {
+    const input = $('fieldFile');
+    const file = input.files[0];
+    const drop = input.closest('.file-drop');
+    const text = drop.querySelector('.file-drop-text');
+    if (file) {
+        drop.classList.add('has-file');
+        text.textContent = file.name;
+    } else {
+        drop.classList.remove('has-file');
+        text.textContent = '点击选择 zip 文件';
+    }
+}
+
+function toggleProxy() {
+    setProxyOpen(!proxyOpen);
+}
+
+function resetProjectForm() {
+    $('projectForm').reset();
+    $('fieldPrefix').value = '/api';
+    $('fieldFile').required = false;
+    setProxyOpen(false);
+    updateFileDrop();
+}
+
+function setModalMode(mode) {
+    modalMode = mode;
+    const isEdit = mode === 'edit';
+
+    $('projectModalIcon').textContent = isEdit ? '✏️' : '📦';
+    $('projectModalTitle').textContent = isEdit ? '编辑项目' : '新建项目';
+
+    const badge = $('projectModalBadge');
+    if (isEdit) {
+        badge.textContent = editTarget;
+        badge.hidden = false;
+    } else {
+        badge.hidden = true;
+    }
+
+    $('projectModalHint').textContent = isEdit
+        ? '修改配置或上传新的 dist.zip 即可更新，无需重新填写全部信息'
+        : '填写项目信息并上传 zip 包，一键部署上线';
+    $('fieldFileLabel').textContent = isEdit ? '更新 dist.zip（可选）' : '上传 dist.zip';
+    $('fieldFileHint').textContent = isEdit
+        ? '留空则仅更新端口 / API 转发配置，上传后将替换静态资源'
+        : '上传前端构建产物压缩包，支持嵌套 dist 目录自动平铺';
+    $('submitProjectBtn').textContent = isEdit ? '保存更改' : '开始部署';
+
+    $('fieldName').readOnly = isEdit;
+    $('fieldName').classList.toggle('input-readonly', isEdit);
+    $('fieldFile').required = !isEdit;
+}
+
+function openCreateModal() {
+    editTarget = '';
+    resetProjectForm();
+    setModalMode('create');
+    $('projectModal').classList.add('open');
+    $('fieldName').focus();
+}
+
+async function openEditModal(name) {
+    editTarget = name;
+    resetProjectForm();
+    setModalMode('edit');
+
+    $('fieldName').value = name;
+
+    try {
+        const meta = await parseJsonResponse(
+            await fetch('/api/project/' + encodeURIComponent(name))
+        );
+        $('fieldPort').value = meta.port || '';
+        $('fieldBackend').value = meta.backend || '';
+        $('fieldPrefix').value = meta.apiPrefix || '/api';
+        $('fieldStrip').checked = !!meta.stripPrefix;
+
+        if (meta.backend) {
+            setProxyOpen(true);
+            $('projectModalHint').textContent =
+                `当前 API 转发：${meta.apiPrefix || '/api'} → ${meta.backend}`;
+        }
+    } catch (e) {
+        toast('加载配置失败: ' + e.message, true);
+    }
+
+    $('projectModal').classList.add('open');
+    $('fieldPort').focus();
+}
+
+function closeProjectModal() {
+    $('projectModal').classList.remove('open');
+    editTarget = '';
+    modalMode = 'create';
+}
+
+function openDeleteModal(name) {
     deleteTarget = name;
-    document.getElementById('delName').textContent = name;
-    document.getElementById('modal').classList.add('open');
+    $('delName').textContent = name;
+    $('deleteModal').classList.add('open');
+}
+
+function closeDeleteModal() {
+    $('deleteModal').classList.remove('open');
+    deleteTarget = '';
 }
 
 async function submitDelete() {
@@ -54,63 +153,27 @@ async function submitDelete() {
     } catch (e) {
         toast('删除失败: ' + e.message, true);
     }
-    closeModal();
+    closeDeleteModal();
 }
 
-async function editProject(name) {
-    editTarget = name;
-    document.getElementById('editTitle').textContent = name;
-    document.getElementById('editPort').value = '';
-    document.getElementById('editBackend').value = '';
-    document.getElementById('editPrefix').value = '/api';
-    document.getElementById('editStrip').checked = false;
-    document.getElementById('editFile').value = '';
+async function submitProject(e) {
+    e.preventDefault();
 
-    try {
-        const meta = await parseJsonResponse(
-            await fetch('/api/project/' + encodeURIComponent(name))
-        );
-        document.getElementById('editPort').value = meta.port || '';
-        document.getElementById('editBackend').value = meta.backend || '';
-        document.getElementById('editPrefix').value = meta.apiPrefix || '/api';
-        document.getElementById('editStrip').checked = !!meta.stripPrefix;
+    const name = $('fieldName').value.trim();
+    const port = $('fieldPort').value;
+    const backend = $('fieldBackend').value.trim();
+    const apiPrefix = $('fieldPrefix').value || '/api';
+    const stripPrefix = $('fieldStrip').checked;
+    const file = $('fieldFile').files[0];
 
-        if (meta.backend) {
-            document.getElementById('editProxyHint').textContent =
-                `当前已配置 API 转发：${meta.apiPrefix || '/api'} → ${meta.backend}`;
-        } else {
-            document.getElementById('editProxyHint').textContent = '未配置 API 转发';
-        }
-    } catch (e) {
-        document.getElementById('editProxyHint').textContent = '无法加载配置，请手动填写';
-        toast('加载配置失败: ' + e.message, true);
-    }
+    if (!name) { toast('请填写项目名称', true); return; }
+    if (!port) { toast('请填写端口号', true); return; }
+    if (modalMode === 'create' && !file) { toast('请上传 zip 文件', true); return; }
 
-    document.getElementById('editModal').classList.add('open');
-}
-
-function closeEditModal() {
-    document.getElementById('editModal').classList.remove('open');
-    editTarget = '';
-}
-
-async function submitEdit() {
-    if (!editTarget) return;
-
-    const port = document.getElementById('editPort').value;
-    const backend = document.getElementById('editBackend').value.trim();
-    const apiPrefix = document.getElementById('editPrefix').value || '/api';
-    const stripPrefix = document.getElementById('editStrip').checked;
-    const file = document.getElementById('editFile').files[0];
-
-    if (!port) {
-        toast('请填写端口号', true);
-        return;
-    }
-
-    const btn = document.getElementById('confirmEdit');
+    const btn = $('submitProjectBtn');
+    const defaultText = modalMode === 'create' ? '开始部署' : '保存更改';
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> 保存中...';
+    btn.innerHTML = '<span class="spinner"></span> ' + (modalMode === 'create' ? '部署中...' : '保存中...');
 
     try {
         const fd = new FormData();
@@ -120,34 +183,43 @@ async function submitEdit() {
         if (stripPrefix) fd.append('stripPrefix', '1');
         if (file) fd.append('file', file);
 
-        const data = await parseJsonResponse(
-            await fetch('/api/project/' + encodeURIComponent(editTarget), {
-                method: 'PUT',
-                body: fd,
-            })
-        );
+        let data;
+        if (modalMode === 'create') {
+            fd.append('name', name);
+            data = await parseJsonResponse(await fetch('/deploy', { method: 'POST', body: fd }));
+        } else {
+            data = await parseJsonResponse(
+                await fetch('/api/project/' + encodeURIComponent(editTarget), { method: 'PUT', body: fd })
+            );
+        }
 
         toast('✅ ' + data.message);
-        closeEditModal();
+        closeProjectModal();
         loadList();
-    } catch (e) {
-        toast('更新失败: ' + e.message, true);
+    } catch (err) {
+        toast((modalMode === 'create' ? '部署' : '更新') + '失败: ' + err.message, true);
     }
 
     btn.disabled = false;
-    btn.innerHTML = '保存更改';
+    btn.innerHTML = defaultText;
 }
 
 async function loadList() {
-    const container = document.getElementById('listContainer');
+    const container = $('listContainer');
     container.innerHTML = '<div class="empty"><div class="spinner" style="border-color:rgba(79,110,247,0.2);border-top-color:var(--primary);"></div></div>';
 
     try {
-        const res = await fetch('/api/list');
-        const data = await res.json();
+        const data = await (await fetch('/api/list')).json();
 
         if (!data.length) {
-            container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>暂无已部署项目</p><p style="font-size:12px;margin-top:4px;">在上方填写信息并上传文件开始部署</p></div>';
+            container.innerHTML = `
+                <div class="empty">
+                    <div class="icon">📭</div>
+                    <p>暂无已部署项目</p>
+                    <p class="form-hint" style="margin:8px 0 20px;">点击右上角「新建项目」开始部署</p>
+                    <button class="btn btn-primary btn-inline" id="emptyCreateBtn">+ 新建项目</button>
+                </div>`;
+            $('emptyCreateBtn').onclick = openCreateModal;
             return;
         }
 
@@ -161,7 +233,7 @@ async function loadList() {
                         proxyBadge = `<span class="badge badge-proxy">🔀 ${escapeHtml(meta.apiPrefix || '/api')}</span>`;
                     }
                 }
-            } catch (_) { /* 忽略单个项目元数据加载失败 */ }
+            } catch (_) {}
 
             const safeName = escapeHtml(item.name);
             const initial = (item.name || '?')[0].toUpperCase();
@@ -189,58 +261,40 @@ async function loadList() {
 
         container.innerHTML = '<div class="project-list">' + cards.join('') + '</div>';
 
-        container.querySelectorAll('[data-action="edit"]').forEach(btn => {
-            btn.onclick = () => editProject(btn.dataset.name);
+        container.querySelectorAll('[data-action="edit"]').forEach((btn) => {
+            btn.onclick = () => openEditModal(btn.dataset.name);
         });
-        container.querySelectorAll('[data-action="delete"]').forEach(btn => {
-            btn.onclick = () => confirmDel(btn.dataset.name);
+        container.querySelectorAll('[data-action="delete"]').forEach((btn) => {
+            btn.onclick = () => openDeleteModal(btn.dataset.name);
         });
     } catch (e) {
         container.innerHTML = '<div class="empty"><p style="color:var(--danger);">加载失败，请刷新重试</p></div>';
     }
 }
 
-async function submitDeploy(e) {
-    e.preventDefault();
-    const form = e.target;
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> 部署中...';
-
-    const fd = new FormData(form);
-    try {
-        const data = await parseJsonResponse(
-            await fetch('/deploy', { method: 'POST', body: fd })
-        );
-        toast('✅ ' + data.message);
-        form.reset();
-        document.getElementById('proxyPanel').classList.remove('open');
-        proxyOpen = false;
-        document.getElementById('proxyCaret').textContent = '▶';
-        loadList();
-    } catch (e) {
-        toast('部署失败: ' + e.message, true);
-    }
-
-    btn.disabled = false;
-    btn.innerHTML = '开始部署';
-}
-
 function init() {
-    document.getElementById('deployForm').addEventListener('submit', submitDeploy);
-    document.getElementById('confirmDel').addEventListener('click', submitDelete);
-    document.getElementById('confirmEdit').addEventListener('click', submitEdit);
+    $('projectForm').addEventListener('submit', submitProject);
+    $('openCreateBtn').addEventListener('click', openCreateModal);
+    $('closeProjectBtn').addEventListener('click', closeProjectModal);
+    $('closeProjectX').addEventListener('click', closeProjectModal);
+    $('confirmDel').addEventListener('click', submitDelete);
+    $('closeDelBtn').addEventListener('click', closeDeleteModal);
+    $('refreshList').addEventListener('click', loadList);
+    $('proxyToggle').addEventListener('click', toggleProxy);
+    $('fieldFile').addEventListener('change', updateFileDrop);
 
-    document.getElementById('modal').addEventListener('click', (e) => {
-        if (e.target.id === 'modal') closeModal();
+    $('projectModal').addEventListener('click', (e) => {
+        if (e.target.id === 'projectModal') closeProjectModal();
     });
-    document.getElementById('editModal').addEventListener('click', (e) => {
-        if (e.target.id === 'editModal') closeEditModal();
+    $('deleteModal').addEventListener('click', (e) => {
+        if (e.target.id === 'deleteModal') closeDeleteModal();
     });
-    document.getElementById('closeEditBtn').addEventListener('click', closeEditModal);
-    document.getElementById('closeDelBtn').addEventListener('click', closeModal);
-    document.getElementById('refreshList').addEventListener('click', loadList);
-    document.getElementById('proxyToggle').addEventListener('click', toggleProxy);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if ($('projectModal').classList.contains('open')) closeProjectModal();
+        if ($('deleteModal').classList.contains('open')) closeDeleteModal();
+    });
 
     loadList();
 }

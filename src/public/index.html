@@ -15,115 +15,111 @@
             <h1>Frontend Deployer</h1>
             <div class="sub">轻量前端部署管理</div>
         </div>
+        <button class="btn btn-header" id="openCreateBtn">+ 新建项目</button>
     </div>
 </div>
 
 <div class="container">
-
-    <!-- 部署表单 -->
-    <div class="card">
-        <div class="card-header"><span class="icon">📦</span><h2>新建部署</h2></div>
-        <div class="card-body">
-            <form id="deployForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>项目名称</label>
-                        <input type="text" name="name" placeholder="如: my-site" required>
-                    </div>
-                    <div class="form-group">
-                        <label>访问端口</label>
-                        <input type="number" name="port" placeholder="如: 8081" required>
-                    </div>
-                </div>
-                <div class="form-group" style="margin-bottom:16px;">
-                    <label>上传文件</label>
-                    <input type="file" name="file" accept=".zip" required>
-                </div>
-
-                <div class="proxy-toggle" id="proxyToggle">
-                    <span id="proxyCaret">▶</span> API 转发（可选）
-                </div>
-                <div class="proxy-panel" id="proxyPanel">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>后端地址</label>
-                            <input type="text" name="backend" placeholder="http://192.168.1.100:3000">
-                        </div>
-                        <div class="form-group">
-                            <label>转发前缀</label>
-                            <input type="text" name="apiPrefix" placeholder="/api" value="/api">
-                        </div>
-                    </div>
-                    <div class="checkbox-row">
-                        <input type="checkbox" name="stripPrefix" value="1" id="stripPrefix">
-                        <label for="stripPrefix">转发时去除前缀（/api/users → /users）</label>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary" id="submitBtn">
-                    开始部署
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- 项目列表 -->
     <div class="card">
         <div class="card-header">
-            <span class="icon">📋</span><h2>已上线项目</h2>
-            <span id="refreshList" style="margin-left:auto;font-size:13px;color:var(--muted);cursor:pointer;">🔄 刷新</span>
+            <span class="icon">📋</span>
+            <h2>已上线项目</h2>
+            <div class="card-header-actions">
+                <button class="btn btn-sm btn-ghost" id="refreshList">🔄 刷新</button>
+            </div>
         </div>
         <div class="card-body" id="listContainer">
             <div class="empty"><div class="spinner" style="border-color:rgba(79,110,247,0.2);border-top-color:var(--primary);"></div></div>
         </div>
     </div>
-
 </div>
 
-<!-- 编辑弹窗 -->
-<div class="modal-overlay" id="editModal">
-    <div class="modal modal-wide">
-        <h3 style="margin-bottom:4px;">✏️ 编辑项目 <span id="editTitle"></span></h3>
-        <p id="editProxyHint" class="form-hint" style="margin-bottom:16px;"></p>
-
-        <div class="form-group" style="margin-bottom:14px;">
-            <label>访问端口</label>
-            <input type="number" id="editPort" placeholder="如: 8081">
-        </div>
-        <div class="form-group" style="margin-bottom:14px;">
-            <label>后端地址（留空则取消 API 转发）</label>
-            <input type="text" id="editBackend" placeholder="http://192.168.1.100:3000">
-        </div>
-        <div class="form-group" style="margin-bottom:14px;">
-            <label>转发前缀</label>
-            <input type="text" id="editPrefix" placeholder="/api">
-        </div>
-        <div class="checkbox-row" style="margin-bottom:0;">
-            <input type="checkbox" id="editStrip">
-            <label for="editStrip">转发时去除前缀</label>
-        </div>
-
-        <div class="modal-section">
-            <div class="modal-section-title">更新静态资源</div>
-            <div class="form-group">
-                <label>上传 dist.zip</label>
-                <input type="file" id="editFile" accept=".zip">
-                <span class="form-hint">上传新的 zip 包即可更新前端资源，端口与 API 转发配置会自动保留</span>
+<!-- 创建 / 编辑 统一弹窗 -->
+<div class="modal-overlay" id="projectModal">
+    <div class="modal modal-form" role="dialog" aria-modal="true">
+        <div class="modal-header">
+            <div class="modal-header-icon" id="projectModalIcon">📦</div>
+            <div class="modal-header-text">
+                <div class="modal-title-row">
+                    <h3 id="projectModalTitle">新建项目</h3>
+                    <span class="modal-name-badge" id="projectModalBadge" hidden></span>
+                </div>
+                <p id="projectModalHint" class="modal-subtitle"></p>
             </div>
+            <button type="button" class="modal-close" id="closeProjectX" aria-label="关闭">×</button>
         </div>
 
-        <div class="modal-actions" style="margin-top:24px;">
-            <button class="btn btn-ghost" id="closeEditBtn">取消</button>
-            <button class="btn btn-primary" id="confirmEdit">保存更改</button>
-        </div>
+        <form id="projectForm">
+            <div class="modal-body">
+                <section class="form-section">
+                    <div class="form-section-label">基本信息</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>项目名称</label>
+                            <input type="text" id="fieldName" name="name" placeholder="如: my-site" required>
+                        </div>
+                        <div class="form-group">
+                            <label>访问端口</label>
+                            <input type="number" id="fieldPort" name="port" placeholder="如: 8081" required>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <div class="form-section-label">静态资源</div>
+                    <div class="form-group">
+                        <label id="fieldFileLabel">上传 dist.zip</label>
+                        <div class="file-drop">
+                            <input type="file" id="fieldFile" name="file" accept=".zip">
+                            <span class="file-drop-icon">📁</span>
+                            <span class="file-drop-text">点击选择 zip 文件</span>
+                        </div>
+                        <span class="form-hint" id="fieldFileHint">上传前端构建产物压缩包</span>
+                    </div>
+                </section>
+
+                <section class="form-section form-section-flush">
+                    <button type="button" class="accordion-toggle" id="proxyToggle">
+                        <span class="accordion-toggle-left">
+                            <span class="accordion-icon">🔀</span>
+                            <span>API 转发</span>
+                            <span class="accordion-tag">可选</span>
+                        </span>
+                        <span class="accordion-caret" id="proxyCaret">▶</span>
+                    </button>
+                    <div class="accordion-panel" id="proxyPanel">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>后端地址</label>
+                                <input type="text" id="fieldBackend" name="backend" placeholder="http://192.168.1.100:3000">
+                            </div>
+                            <div class="form-group">
+                                <label>转发前缀</label>
+                                <input type="text" id="fieldPrefix" name="apiPrefix" placeholder="/api" value="/api">
+                            </div>
+                        </div>
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="fieldStrip" name="stripPrefix" value="1">
+                            <label for="fieldStrip">转发时去除前缀（/api/users → /users）</label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="closeProjectBtn">取消</button>
+                <button type="submit" class="btn btn-primary" id="submitProjectBtn">开始部署</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <!-- 删除确认弹窗 -->
-<div class="modal-overlay" id="modal">
-    <div class="modal">
-        <h3>⚠️ 确认删除</h3>
-        <p>将永久删除项目 <strong id="delName"></strong><br>此操作不可恢复</p>
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal modal-confirm" role="alertdialog" aria-modal="true">
+        <div class="confirm-icon confirm-icon-danger">🗑️</div>
+        <h3>确认删除项目？</h3>
+        <p>将永久删除 <strong id="delName"></strong> 及其所有文件与容器<br>此操作不可恢复</p>
         <div class="modal-actions">
             <button class="btn btn-ghost" id="closeDelBtn">取消</button>
             <button class="btn btn-danger" id="confirmDel">确认删除</button>
