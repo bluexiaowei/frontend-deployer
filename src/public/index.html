@@ -4,246 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Frontend Deployer</title>
-<style>
-    :root {
-        --bg: #f5f6fa;
-        --card: #fff;
-        --primary: #4f6ef7;
-        --danger: #e5484d;
-        --success: #30a46c;
-        --text: #1a1a2e;
-        --muted: #8b8b9e;
-        --border: #e8e8ef;
-        --radius: 12px;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        min-height: 100vh;
-    }
-
-    /* Header */
-    .header {
-        background: linear-gradient(135deg, #4f6ef7 0%, #7c5cfc 100%);
-        padding: 24px 0;
-        margin-bottom: 28px;
-    }
-    .header-inner {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 0 24px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-    .header .logo { font-size: 28px; }
-    .header h1 { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
-    .header .sub { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 2px; }
-
-    /* Layout */
-    .container { max-width: 900px; margin: 0 auto; padding: 0 24px 40px; display: flex; flex-direction: column; gap: 24px; }
-
-    /* Cards */
-    .card {
-        background: var(--card);
-        border-radius: var(--radius);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
-        overflow: hidden;
-    }
-    .card-header {
-        padding: 20px 24px;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .card-header h2 { font-size: 16px; font-weight: 600; }
-    .card-header .icon { font-size: 20px; }
-    .card-body { padding: 24px; }
-
-    /* Form */
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        margin-bottom: 16px;
-    }
-    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .form-group input, .form-group select {
-        padding: 11px 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 14px;
-        color: var(--text);
-        background: #fafbfc;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        outline: none;
-    }
-    .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,110,247,0.12); background: #fff; }
-    .form-group input[type="file"] { padding: 9px 12px; cursor: pointer; }
-    .form-group input[type="file"]::file-selector-button {
-        background: var(--primary);
-        color: #fff;
-        border: none;
-        padding: 7px 16px;
-        border-radius: 6px;
-        margin-right: 10px;
-        cursor: pointer;
-        font-size: 13px;
-    }
-
-    /* Proxy toggle */
-    .proxy-toggle {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--primary);
-        padding: 10px 0;
-        user-select: none;
-    }
-    .proxy-toggle:hover { opacity: 0.8; }
-    .proxy-panel {
-        display: none;
-        background: #f8f9fc;
-        border-radius: 10px;
-        padding: 18px;
-        margin-bottom: 16px;
-        border: 1px dashed var(--border);
-    }
-    .proxy-panel.open { display: block; }
-
-    .checkbox-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 12px;
-        font-size: 13px;
-        color: var(--muted);
-    }
-    .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
-
-    /* Buttons */
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 12px 24px;
-        border: none;
-        border-radius: 8px;
-        font-size: 15px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .btn-primary { background: var(--primary); color: #fff; width: 100%; }
-    .btn-primary:hover { background: #3d5ce5; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,110,247,0.3); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-    .btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 6px; }
-    .btn-danger { background: var(--danger); color: #fff; }
-    .btn-danger:hover { background: #d03b40; }
-    .btn-ghost { background: transparent; color: var(--primary); }
-    .btn-ghost:hover { background: rgba(79,110,247,0.08); }
-
-    /* Project cards */
-    .project-list { display: flex; flex-direction: column; gap: 12px; }
-    .project-card {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 18px 20px;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        transition: all 0.2s;
-    }
-    .project-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(79,110,247,0.08); }
-    .project-info { display: flex; align-items: center; gap: 14px; }
-    .project-avatar {
-        width: 40px; height: 40px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #eef1ff 0%, #e8ecff 100%);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 18px;
-    }
-    .project-name { font-weight: 600; font-size: 15px; }
-    .project-meta { font-size: 13px; color: var(--muted); margin-top: 2px; display: flex; gap: 12px; }
-    .project-actions { display: flex; gap: 8px; align-items: center; }
-    .badge {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
-    }
-    .badge-running { background: #e6f4ea; color: var(--success); }
-    .badge-port {
-        background: #eef1ff;
-        color: var(--primary);
-        text-decoration: none;
-        cursor: pointer;
-    }
-    .badge-port:hover { background: #dde3ff; }
-
-    /* Empty state */
-    .empty {
-        text-align: center;
-        padding: 48px 20px;
-        color: var(--muted);
-    }
-    .empty .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.6; }
-    .empty p { font-size: 14px; }
-
-    /* Modal */
-    .modal-overlay {
-        display: none;
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,0.4);
-        z-index: 100;
-        align-items: center; justify-content: center;
-    }
-    .modal-overlay.open { display: flex; }
-    .modal {
-        background: #fff;
-        border-radius: var(--radius);
-        padding: 28px 32px;
-        max-width: 380px; width: 90%;
-        box-shadow: 0 16px 48px rgba(0,0,0,0.15);
-        text-align: center;
-    }
-    .modal h3 { font-size: 18px; margin-bottom: 8px; }
-    .modal p { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
-    .modal-actions { display: flex; gap: 12px; }
-    .modal-actions .btn { flex: 1; }
-
-    /* Toast */
-    .toast {
-        position: fixed; bottom: 28px; right: 28px;
-        background: #1a1a2e; color: #fff;
-        padding: 14px 22px; border-radius: 10px;
-        font-size: 14px; font-weight: 500;
-        z-index: 200;
-        opacity: 0; transform: translateY(10px);
-        transition: all 0.3s;
-        pointer-events: none;
-        max-width: 360px;
-    }
-    .toast.show { opacity: 1; transform: translateY(0); }
-    .toast.error { background: var(--danger); }
-
-    /* Loading */
-    .spinner {
-        display: inline-block; width: 18px; height: 18px;
-        border: 2px solid rgba(255,255,255,0.3);
-        border-top-color: #fff;
-        border-radius: 50%;
-        animation: spin 0.6s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
@@ -279,7 +40,7 @@
                     <input type="file" name="file" accept=".zip" required>
                 </div>
 
-                <div class="proxy-toggle" onclick="toggleProxy()">
+                <div class="proxy-toggle" id="proxyToggle">
                     <span id="proxyCaret">▶</span> API 转发（可选）
                 </div>
                 <div class="proxy-panel" id="proxyPanel">
@@ -310,7 +71,7 @@
     <div class="card">
         <div class="card-header">
             <span class="icon">📋</span><h2>已上线项目</h2>
-            <span style="margin-left:auto;font-size:13px;color:var(--muted);cursor:pointer;" onclick="loadList()">🔄 刷新</span>
+            <span id="refreshList" style="margin-left:auto;font-size:13px;color:var(--muted);cursor:pointer;">🔄 刷新</span>
         </div>
         <div class="card-body" id="listContainer">
             <div class="empty"><div class="spinner" style="border-color:rgba(79,110,247,0.2);border-top-color:var(--primary);"></div></div>
@@ -321,8 +82,10 @@
 
 <!-- 编辑弹窗 -->
 <div class="modal-overlay" id="editModal">
-    <div class="modal" style="max-width:480px;text-align:left;">
-        <h3 style="margin-bottom:20px;">✏️ 编辑项目 <span id="editTitle"></span></h3>
+    <div class="modal modal-wide">
+        <h3 style="margin-bottom:4px;">✏️ 编辑项目 <span id="editTitle"></span></h3>
+        <p id="editProxyHint" class="form-hint" style="margin-bottom:16px;"></p>
+
         <div class="form-group" style="margin-bottom:14px;">
             <label>访问端口</label>
             <input type="number" id="editPort" placeholder="如: 8081">
@@ -335,13 +98,23 @@
             <label>转发前缀</label>
             <input type="text" id="editPrefix" placeholder="/api">
         </div>
-        <div class="checkbox-row" style="margin-bottom:20px;">
+        <div class="checkbox-row" style="margin-bottom:0;">
             <input type="checkbox" id="editStrip">
             <label for="editStrip">转发时去除前缀</label>
         </div>
-        <div class="modal-actions">
-            <button class="btn btn-ghost" onclick="closeEditModal()">取消</button>
-            <button class="btn btn-primary" id="confirmEdit" onclick="submitEdit()">保存更改</button>
+
+        <div class="modal-section">
+            <div class="modal-section-title">更新静态资源</div>
+            <div class="form-group">
+                <label>上传 dist.zip</label>
+                <input type="file" id="editFile" accept=".zip">
+                <span class="form-hint">上传新的 zip 包即可更新前端资源，端口与 API 转发配置会自动保留</span>
+            </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:24px;">
+            <button class="btn btn-ghost" id="closeEditBtn">取消</button>
+            <button class="btn btn-primary" id="confirmEdit">保存更改</button>
         </div>
     </div>
 </div>
@@ -352,197 +125,14 @@
         <h3>⚠️ 确认删除</h3>
         <p>将永久删除项目 <strong id="delName"></strong><br>此操作不可恢复</p>
         <div class="modal-actions">
-            <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+            <button class="btn btn-ghost" id="closeDelBtn">取消</button>
             <button class="btn btn-danger" id="confirmDel">确认删除</button>
         </div>
     </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<script>
-    let proxyOpen = false;
-    let deleteTarget = '';
-
-    function toggleProxy() {
-        proxyOpen = !proxyOpen;
-        document.getElementById('proxyPanel').classList.toggle('open', proxyOpen);
-        document.getElementById('proxyCaret').textContent = proxyOpen ? '▼' : '▶';
-    }
-
-    function toast(msg, isError) {
-        const el = document.getElementById('toast');
-        el.textContent = msg;
-        el.className = 'toast' + (isError ? ' error' : '') + ' show';
-        clearTimeout(el._t);
-        el._t = setTimeout(() => el.classList.remove('show'), 3000);
-    }
-
-    function closeModal() {
-        document.getElementById('modal').classList.remove('open');
-        deleteTarget = '';
-    }
-
-    function confirmDel(name) {
-        deleteTarget = name;
-        document.getElementById('delName').textContent = name;
-        document.getElementById('modal').classList.add('open');
-    }
-
-    document.getElementById('confirmDel').onclick = async function() {
-        if (!deleteTarget) return;
-        try {
-            await fetch('/delete/' + deleteTarget, { method: 'DELETE' });
-            toast('✅ 已删除 ' + deleteTarget);
-            loadList();
-        } catch(e) {
-            toast('删除失败: ' + e.message, true);
-        }
-        closeModal();
-    };
-
-    document.getElementById('modal').onclick = function(e) {
-        if (e.target === this) closeModal();
-    };
-
-    // ---- 编辑功能 ----
-    let editTarget = '';
-
-    async function editProject(name) {
-        editTarget = name;
-        document.getElementById('editTitle').textContent = name;
-        // 重置表单
-        document.getElementById('editPort').value = '';
-        document.getElementById('editBackend').value = '';
-        document.getElementById('editPrefix').value = '/api';
-        document.getElementById('editStrip').checked = false;
-
-        try {
-            const res = await fetch('/api/project/' + name);
-            if (res.ok) {
-                const meta = await res.json();
-                document.getElementById('editPort').value = meta.port || '';
-                document.getElementById('editBackend').value = meta.backend || '';
-                document.getElementById('editPrefix').value = meta.apiPrefix || '/api';
-                document.getElementById('editStrip').checked = meta.stripPrefix || false;
-            }
-        } catch(_) {}
-        document.getElementById('editModal').classList.add('open');
-    }
-
-    function closeEditModal() {
-        document.getElementById('editModal').classList.remove('open');
-        editTarget = '';
-    }
-
-    document.getElementById('editModal').onclick = function(e) {
-        if (e.target === this) closeEditModal();
-    };
-
-    async function submitEdit() {
-        if (!editTarget) return;
-        const port = document.getElementById('editPort').value;
-        const backend = document.getElementById('editBackend').value.trim();
-        const apiPrefix = document.getElementById('editPrefix').value || '/api';
-        const stripPrefix = document.getElementById('editStrip').checked;
-
-        if (!port) { toast('请填写端口号', true); return; }
-
-        const btn = document.getElementById('confirmEdit');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner"></span> 保存中...';
-
-        try {
-            const res = await fetch('/api/project/' + editTarget, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ port, backend, apiPrefix, stripPrefix })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                toast('✅ ' + data.message);
-                closeEditModal();
-                loadList();
-            } else {
-                toast('更新失败: ' + (data.error || res.statusText), true);
-            }
-        } catch(e) {
-            toast('网络错误: ' + e.message, true);
-        }
-        btn.disabled = false;
-        btn.innerHTML = '保存更改';
-    }
-
-    async function loadList() {
-        const container = document.getElementById('listContainer');
-        container.innerHTML = '<div class="empty"><div class="spinner" style="border-color:rgba(79,110,247,0.2);border-top-color:var(--primary);"></div></div>';
-        try {
-            const res = await fetch('/api/list');
-            const data = await res.json();
-            if (!data.length) {
-                container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>暂无已部署项目</p><p style="font-size:12px;margin-top:4px;">在上方填写信息并上传文件开始部署</p></div>';
-                return;
-            }
-            let html = '<div class="project-list">';
-            data.forEach(item => {
-                const initial = (item.name || '?')[0].toUpperCase();
-                html += `
-                <div class="project-card">
-                    <div class="project-info">
-                        <div class="project-avatar">${initial}</div>
-                        <div>
-                            <div class="project-name">${item.name}</div>
-                            <div class="project-meta">
-                                <span class="badge badge-running">● 运行中</span>
-                                <a class="badge badge-port" href="http://${location.hostname}:${item.port}" target="_blank">:${item.port} ↗</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="project-actions">
-                        <a class="btn btn-sm btn-ghost" href="http://${location.hostname}:${item.port}" target="_blank">访问</a>
-                        <button class="btn btn-sm btn-ghost" onclick="editProject('${item.name}')">编辑</button>
-                        <button class="btn btn-sm btn-danger" onclick="confirmDel('${item.name}')">删除</button>
-                    </div>
-                </div>`;
-            });
-            html += '</div>';
-            container.innerHTML = html;
-        } catch(e) {
-            container.innerHTML = '<div class="empty"><p style="color:var(--danger);">加载失败，请刷新重试</p></div>';
-        }
-    }
-
-    document.getElementById('deployForm').onsubmit = async function(e) {
-        e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner"></span> 部署中...';
-
-        const fd = new FormData(this);
-        try {
-            const res = await fetch('/deploy', { method: 'POST', body: fd });
-            const text = await res.text();
-            if (res.ok) {
-                const match = text.match(/项目 (\S+) 已在端口 (\S+) 上线/);
-                const msg = match ? `✅ ${match[1]} 已上线 → 端口 ${match[2]}` : '✅ 部署成功';
-                toast(msg);
-                this.reset();
-                document.getElementById('proxyPanel').classList.remove('open');
-                proxyOpen = false;
-                document.getElementById('proxyCaret').textContent = '▶';
-                loadList();
-            } else {
-                toast('部署失败: ' + (text || res.statusText), true);
-            }
-        } catch(e) {
-            toast('网络错误: ' + e.message, true);
-        }
-        btn.disabled = false;
-        btn.innerHTML = '开始部署';
-    };
-
-    loadList();
-</script>
+<script type="module" src="/app.js"></script>
 </body>
 </html>

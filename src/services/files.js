@@ -21,17 +21,8 @@ function cleanDir(targetDir) {
     }
 }
 
-/**
- * 解压 zip 并自动平铺嵌套目录
- * @returns {string} 解压到的目标目录
- */
-function extractZip(zipPath, targetDir) {
-    cleanDir(targetDir);
-
-    const zip = new admZip(zipPath);
-    zip.extractAllTo(targetDir, true);
-
-    // 如果根目录没有 index.html 且只有一个子目录，则平铺
+/** 若 zip 内只有一层嵌套目录，则平铺到目标根目录 */
+function flattenNestedDir(targetDir) {
     const items = fs.readdirSync(targetDir).filter(item => !item.startsWith('.'));
     if (!items.includes('index.html') && items.length === 1) {
         const subDir = path.join(targetDir, items[0]);
@@ -43,9 +34,61 @@ function extractZip(zipPath, targetDir) {
             fs.rmdirSync(subDir);
         }
     }
+}
+
+/**
+ * 解压 zip 到已有目录（不清理目标目录）
+ * @returns {string} 解压到的目标目录
+ */
+function extractZipContents(zipPath, targetDir) {
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    const zip = new admZip(zipPath);
+    zip.extractAllTo(targetDir, true);
+    flattenNestedDir(targetDir);
 
     console.log(`[files] 解压完成 ${targetDir}:`, fs.readdirSync(targetDir));
     return targetDir;
+}
+
+/**
+ * 解压 zip 并自动平铺嵌套目录（全新部署，清空目标目录）
+ * @returns {string} 解压到的目标目录
+ */
+function extractZip(zipPath, targetDir) {
+    cleanDir(targetDir);
+    return extractZipContents(zipPath, targetDir);
+}
+
+/**
+ * 更新已部署项目的静态资源，保留 nginx 配置与 deploy.json
+ */
+function updateProjectZip(zipPath, name) {
+    const targetDir = path.join(CONTAINER_DEPLOY_DIR, name);
+    if (!fs.existsSync(targetDir)) {
+        throw new Error('项目不存在');
+    }
+
+    const meta = readMeta(name);
+    const nginxConfPath = path.join(targetDir, 'nginx', 'default.conf');
+    const nginxBackup = fs.existsSync(nginxConfPath)
+        ? fs.readFileSync(nginxConfPath, 'utf-8')
+        : null;
+
+    cleanDir(targetDir);
+    extractZipContents(zipPath, targetDir);
+
+    if (nginxBackup) {
+        const nginxDir = path.join(targetDir, 'nginx');
+        fs.mkdirSync(nginxDir, { recursive: true });
+        fs.writeFileSync(path.join(nginxDir, 'default.conf'), nginxBackup);
+    }
+
+    if (meta) {
+        saveMeta(targetDir, meta);
+    }
+
+    console.log(`[files] 项目 ${name} 静态资源已更新`);
 }
 
 /**
@@ -88,6 +131,8 @@ function readMeta(name) {
 
 module.exports = {
     extractZip,
+    extractZipContents,
+    updateProjectZip,
     writeNginxConfig,
     removeProjectDir,
     saveMeta,
